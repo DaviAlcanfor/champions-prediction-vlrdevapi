@@ -23,7 +23,8 @@ RELEVANT_COLUMNS = ["date", "match_id", "team1", "score1", "team2", "score2", "w
 # Showmatch teams
 INVALID_TEAMS = {
     "Team tarik", "Team Toast", "Team World", "Team Thailand",
-    "Team International", "Precise Defeat", "Pure Aim", "Glory Once Again"
+    "Team International", "Precise Defeat", "Pure Aim", "Glory Once Again",
+    "Team Alpha", "Team Omega", "Team France", "Team EMEA"
 }
 
 # All valid teams with name, id
@@ -78,6 +79,12 @@ TEAM_IDS = {
     "ZETA DIVISION": 6997,
 }
 
+TEAM_NAME_ALIASES = {
+    "Guangzhou Huadu Bilibili Gaming(Bilibili Gaming)": "Bilibili Gaming",
+    "VISA KRÜ(KRÜ Esports)": "KRÜ Esports",
+    "JD Mall JDG Esports(JDG Esports)": "JDG Esports",
+    "Movistar KOI(KOI)": "KOI",
+}
 
 
 # Event type weights for Elo initial calculation
