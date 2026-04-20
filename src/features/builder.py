@@ -1,62 +1,28 @@
 import pandas as pd
-from src.features.elo import expected_score
 
 
-def build_match_features(
-    matches_df: pd.DataFrame,
-    elo_df: pd.DataFrame,
-) -> pd.DataFrame:
+def build_match_features(elo_df: pd.DataFrame, player_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Builds a feature table for each match.
-    Uses elo_before values to avoid data leakage.
+    Merges Elo features and player stats into a single feature table ready for modeling.
+    Joins on date, team1, team2.
     """
-    rows = []
-
-    for _, match in matches_df.iterrows():
-        team1 = match["team1"]
-        team2 = match["team2"]
-        date = match["date"]
-
-        # get elo_before for both teams at this specific match
-        match_elo = elo_df[
-            (elo_df["team1"] == team1) &
-            (elo_df["team2"] == team2) &
-            (elo_df["date"] == date)
-        ]
-
-        if match_elo.empty:
-            continue
-
-        elo1 = match_elo["elo1_before"].values[0]
-        elo2 = match_elo["elo2_before"].values[0]
-
-        rows.append({
-            "date": date,
-            "event": match["event"],
-            "stage": match["stage"],
-            "team1": team1,
-            "team2": team2,
-            "elo_team1": elo1,
-            "elo_team2": elo2,
-            "elo_diff": round(elo1 - elo2, 2),
-            "win_prob_team1": round(expected_score(elo1, elo2), 4),
-            "result": 1 if match["winner"] == team1 else 0,
-        })
-
-    df = pd.DataFrame(rows)
-    df = df.sort_values("date").reset_index(drop=True)
-
+    df = elo_df.merge(
+        player_df, 
+        on=["date", "team1", "team2"], 
+        how="left"
+    )
     return df
 
 
 if __name__ == "__main__":
-    matches_df = pd.read_parquet("data/processed/matches.parquet")
     elo_df = pd.read_parquet("data/processed/elo.parquet")
+    player_df = pd.read_parquet("data/features/player_features.parquet")
 
-    features_df = build_match_features(matches_df, elo_df)
+    features = build_match_features(elo_df, player_df)
 
-    print(features_df.shape)
-    print(features_df.head(10))
+    print(features.shape)
+    print(features.columns.tolist())
+    print(features.tail(5))
 
-    features_df.to_parquet("data/features/match_features.parquet", index=False)
+    features.to_parquet("data/features/match_features.parquet", index=False)
     print("Saved to data/features/match_features.parquet")
