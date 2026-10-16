@@ -26,3 +26,17 @@ def test_walk_forward_folds_never_train_on_future_events():
     assert [event for event, _, _ in folds] == ["B", "C"]
     for _, train, test in folds:
         assert train["date"].max() < test["date"].min()
+
+
+def test_walk_forward_folds_ignore_rows_from_parallel_events():
+    df = pd.DataFrame({
+        "date": list(pd.date_range("2025-01-01", periods=20, freq="D"))
+        + list(pd.date_range("2025-01-12", periods=14, freq="D")),
+        "event": ["A"] * 20 + ["B"] * 14,
+    })
+
+    folds = list(walk_forward_folds(df))
+
+    assert len(folds) > 0
+    for _, train, test in folds:
+        assert train["date"].max() < test["date"].min()

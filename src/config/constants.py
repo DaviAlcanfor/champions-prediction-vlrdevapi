@@ -21,7 +21,6 @@ PROCESSED_PATH = os.path.join("data", "processed")
 FEATURES_PATH = os.path.join("data", "features")
 MODELS_PATH = "models"
 
-RANDOM_SEED = 42
 RELEVANT_COLUMNS = ["date", "match_id", "team1", "score1", "team2", "score2", "winner", "stage"]
 
 # Showmatch teams
@@ -138,3 +137,4 @@ CHAMPIONS_2026_GROUPS = {
 
 TUNING_TRIALS = 50
 MONTE_CARLO_SIMULATIONS = 10_000
+RANDOM_SEED = 42

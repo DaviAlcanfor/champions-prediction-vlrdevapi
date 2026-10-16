@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import pandas as pd
 import numpy as np
 from xgboost import XGBClassifier
@@ -35,16 +37,16 @@ def fill_missing_stats(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def walk_forward_folds(df: pd.DataFrame):
+def walk_forward_folds(df: pd.DataFrame) -> Iterator[tuple[str, pd.DataFrame, pd.DataFrame]]:
     """
-    Yields (test_event, train, test): trains on all past tournaments, tests on the next one.
+    Yields (test_event, train, test): trains on past tournaments' matches dated before the test event starts, tests on the next one.
     Skips folds too small to evaluate.
     """
     events = get_tournament_order(df)
 
     for i in range(1, len(events)):
-        train = df[df["event"].isin(events[:i])]
         test = df[df["event"] == events[i]]
+        train = df[df["event"].isin(events[:i]) & (df["date"] < test["date"].min())]
 
         if len(train) < 10 or len(test) < 3:
             continue

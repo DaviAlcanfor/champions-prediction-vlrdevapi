@@ -1,5 +1,6 @@
 from src.config.constants import CHAMPIONS_2026_GROUPS
-from src.modeling.simulation import TBD, predicted_bracket, replay_bracket, simulate_group
+from src.config.enums import BracketSlot
+from src.modeling.simulation import TBD, predicted_bracket, replay_bracket, simulate_group, simulate_playoffs
 
 TEAMS = [team for group in CHAMPIONS_2026_GROUPS.values() for team in group]
 
@@ -28,4 +29,19 @@ def test_predicted_bracket_crowns_the_team_that_beats_everyone():
 def test_replay_without_results_leaves_every_match_tbd():
     bracket = replay_bracket([], CHAMPIONS_2026_GROUPS)
 
+    assert len(bracket) == 34
     assert all(match["winner"] == TBD for match in bracket)
+
+
+def test_playoffs_lower_round_2_crosses_sides():
+    played = []
+
+    def play(slot, team_a, team_b):
+        played.append((slot, team_a, team_b))
+        return min(team_a, team_b), max(team_a, team_b)
+
+    simulate_playoffs(play, [("A", "B"), ("C", "D"), ("E", "F"), ("G", "H")])
+
+    # upper semi losers: C (semi 1) and G (semi 2); lower round 1 winners: B (match 1) and F (match 2)
+    lower_r2 = [(a, b) for slot, a, b in played if slot == BracketSlot.LOWER_R2]
+    assert lower_r2 == [("G", "B"), ("C", "F")]
