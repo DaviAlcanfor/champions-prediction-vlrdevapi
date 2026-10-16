@@ -182,20 +182,22 @@ Every feature (Elo, player stats) is frozen at the start of Champions. The model
 
 | Metric | Model | Elo baseline | Before these changes (model) |
 |---|---|---|---|
-| Walk-forward log loss (lower is better) | 0.6777 | 0.6902 | 0.6667 (optimistic, leaked placements) |
-| Accuracy on real matchups | 20/32 (62.5%) | 19/32 (59.4%) | 17/32 (53%) |
-| Group stage accuracy | 15/20 | 15/20 | 14/20 |
+| Walk-forward log loss (lower is better) | 0.6757 | 0.6826 | 0.6667 (optimistic, leaked placements) |
+| Accuracy on real matchups | 21/32 (65.6%) | 19/32 (59.4%) | 17/32 (53%) |
+| Group stage accuracy | 16/20 | 15/20 | 14/20 |
 | Playoffs accuracy | 5/12 | 4/12 | 3/12 |
-| Playoff teams predicted correctly | 6/8 (missed G2, LOUD; predicted TYLOO, EDG) | - | 7/8 |
+| Playoff teams predicted correctly | 7/8 (missed LOUD; predicted EDG) | - | 7/8 |
 | Predicted champion | Paper Rex (eliminated in Lower Round 1) | - | Paper Rex |
 
 The old Elo baseline (0.8035 log loss) was not comparable: it used leaky initial Elo and no season regression. All 16 teams now have player stats at Champions.
+
+The model's walk-forward log loss is the best of 50 Optuna trials selected on the same folds, so it is optimistic relative to the untuned Elo baseline.
 
 ### Known limitations
 
 - **Elo still favors Paper Rex heavily.** Paper Rex starts Champions at 295 Elo, 65 points above the next team, while teams in form in 2026 (LOUD 8th, Vitality 10th) sit in the middle.
 - **Low confidence.** Win probabilities on real matchups stay between 50% and 65%, so the model rarely separates teams clearly.
-- **The edge over Elo is small.** Log loss improves by only 0.0125 (0.6777 vs 0.6902) and the model got one more match right than the baseline (20 vs 19 of 32). With 32 matches the margin of error is about ±17 percentage points, so this is not evidence that the model beats Elo.
+- **The edge over Elo is small.** Log loss improves by only 0.0069 (0.6757 vs 0.6826) and the model got two more matches right than the baseline (21 vs 19 of 32). With 32 matches the margin of error is about ±17 percentage points, so this is not evidence that the model beats Elo.
 
 ---
 
