@@ -15,7 +15,7 @@ from src.features.builder import build_match_features
 from src.features.elo import BASE_ELO, calculate_dynamic_elo, calculate_initial_elo, expected_score
 from src.features.player_stats import build_player_features, compute_team_stats, load_player_stats
 from src.modeling.predict import train_final_model
-from src.modeling.train import FEATURE_COLS, fill_missing_stats
+from src.modeling.train import FEATURE_COLS, elo_baseline_log_loss, fill_missing_stats
 from src.modeling.tuning import objective
 from src.processing.player_stats_2026 import load_player_stats_2026
 
@@ -165,4 +165,5 @@ def train_champions_model(pre_champions: pd.DataFrame, teams: list[str]) -> dict
         "team_stats": team_stats,
         "win_prob": win_prob,
         "best_log_loss": best_log_loss,
+        "elo_log_loss": elo_baseline_log_loss(features),
     }

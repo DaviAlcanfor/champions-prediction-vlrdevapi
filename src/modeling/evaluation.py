@@ -40,8 +40,8 @@ def bracket_comparison(predicted: list[dict], real: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def match_predictions(champions: pd.DataFrame, win_prob: WinProbTable) -> pd.DataFrame:
-    """Model pick for every real Champions matchup already played."""
+def match_predictions(champions: pd.DataFrame, win_prob: WinProbTable, elo: dict) -> pd.DataFrame:
+    """Model pick and Elo favorite for every real Champions matchup already played."""
     rows = []
 
     for _, match in champions.iterrows():
@@ -49,6 +49,7 @@ def match_predictions(champions: pd.DataFrame, win_prob: WinProbTable) -> pd.Dat
         p_team1 = win_prob[(team1, team2)]
 
         pick, prob = (team1, p_team1) if p_team1 >= 0.5 else (team2, 1 - p_team1)
+        elo_favorite = team1 if elo.get(team1, BASE_ELO) >= elo.get(team2, BASE_ELO) else team2
 
         rows.append({
             "stage": match["stage"],
@@ -57,6 +58,7 @@ def match_predictions(champions: pd.DataFrame, win_prob: WinProbTable) -> pd.Dat
             "prob_%": _to_percent(prob),
             "winner": match["winner"],
             "hit": pick == match["winner"],
+            "elo_hit": elo_favorite == match["winner"],
         })
 
     return pd.DataFrame(rows)

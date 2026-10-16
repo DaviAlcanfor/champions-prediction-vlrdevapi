@@ -35,6 +35,46 @@ def fill_missing_stats(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+
+def walk_forward_folds(df: pd.DataFrame):
+    """
+    Yields (test_event, train, test): trains on all past tournaments, tests on the next one.
+    Skips folds too small to evaluate.
+    """
+    events = get_tournament_order(df)
+
+    for i in range(1, len(events)):
+        train = df[df["event"].isin(events[:i])]
+        test = df[df["event"] == events[i]]
+
+        if len(train) < 10 or len(test) < 3:
+            continue
+
+        yield events[i], train, test
+
+
+def elo_baseline_metrics(df: pd.DataFrame) -> dict:
+    """
+    Accuracy and log loss of the Elo formula alone (win_prob_team1), no model.
+    The model is only worth it if it beats these numbers.
+    """
+    y_true = df[TARGET_COL]
+    y_prob = df["win_prob_team1"]
+
+    return {
+        "elo_accuracy": round(accuracy_score(y_true, (y_prob >= 0.5).astype(int)), 4),
+        "elo_log_loss": round(log_loss(y_true, y_prob, labels=[0, 1]), 4),
+    }
+
+
+def elo_baseline_log_loss(df: pd.DataFrame) -> float:
+    """Mean walk-forward log loss of the Elo formula alone, comparable to the tuning objective."""
+    return float(np.mean([
+        elo_baseline_metrics(test)["elo_log_loss"]
+        for _, _, test in walk_forward_folds(df)
+    ]))
+
+
 def compute_sample_weights(
     df: pd.DataFrame,
     alpha: float = 0.5,
@@ -71,19 +111,9 @@ def walk_forward_validation(df: pd.DataFrame) -> list[dict]:
     Trains on all past tournaments, tests on the next one.
     Returns list of results per fold.
     """
-    events = get_tournament_order(df)
     results = []
 
-    for i in range(1, len(events)):
-        train_events = events[:i]
-        test_event = events[i]
-
-        train = df[df["event"].isin(train_events)]
-        test = df[df["event"] == test_event]
-
-        if len(train) < 10 or len(test) < 3:
-            continue
-
+    for test_event, train, test in walk_forward_folds(df):
         X_train = train[FEATURE_COLS]
         y_train = train[TARGET_COL]
         X_test = test[FEATURE_COLS]
@@ -108,6 +138,7 @@ def walk_forward_validation(df: pd.DataFrame) -> list[dict]:
             "test_size": len(test),
             "accuracy": round(accuracy_score(y_test, y_pred), 4),
             "log_loss": round(log_loss(y_test, y_prob), 4),
+            **elo_baseline_metrics(test),
         })
 
         print(f"  [{test_event}] acc={results[-1]['accuracy']} logloss={results[-1]['log_loss']}")
@@ -132,3 +163,5 @@ if __name__ == "__main__":
     print(results_df)
     print(f"\nMean accuracy: {results_df['accuracy'].mean():.4f}")
     print(f"Mean log_loss: {results_df['log_loss'].mean():.4f}")
+    print(f"Elo baseline accuracy: {results_df['elo_accuracy'].mean():.4f}")
+    print(f"Elo baseline log_loss: {results_df['elo_log_loss'].mean():.4f}")
