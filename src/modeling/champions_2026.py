@@ -12,7 +12,7 @@ from src.config.constants import (
     TUNING_TRIALS,
 )
 from src.features.builder import build_match_features
-from src.features.elo import BASE_ELO, calculate_dynamic_elo, calculate_initial_elo, expected_score
+from src.features.elo import BASE_ELO, calculate_dynamic_elo, calculate_initial_elo
 from src.features.player_stats import build_player_features, compute_team_stats, load_player_stats
 from src.modeling.predict import train_final_model
 from src.modeling.train import FEATURE_COLS, elo_baseline_log_loss, fill_missing_stats
@@ -106,10 +106,7 @@ def _matchup_features(team_a: str, team_b: str, elo: dict, team_stats: dict, med
     elo_a = elo.get(team_a, BASE_ELO)
     elo_b = elo.get(team_b, BASE_ELO)
 
-    row = {
-        "elo_diff": elo_a - elo_b,
-        "win_prob_team1": expected_score(elo_a, elo_b),
-    }
+    row = {"elo_diff": elo_a - elo_b}
 
     for stat in STAT_NAMES:
         row[f"{stat}_team1"] = team_stats[team_a].get(stat, medians[f"{stat}_team1"])

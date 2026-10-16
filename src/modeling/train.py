@@ -9,7 +9,6 @@ from src.processing.placements import classify_event
 
 FEATURE_COLS = [
     "elo_diff",
-    "win_prob_team1",
     "acs_team1", "kast_team1", "adr_team1",
     "acs_team2", "kast_team2", "adr_team2",
 ]
