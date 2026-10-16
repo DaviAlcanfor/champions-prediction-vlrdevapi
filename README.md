@@ -196,7 +196,7 @@ The model's walk-forward log loss is the best of 50 Optuna trials selected on th
 ### Known limitations
 
 - **Elo still favors Paper Rex heavily.** Paper Rex starts Champions at 295 Elo, 65 points above the next team, while teams in form in 2026 (LOUD 8th, Vitality 10th) sit in the middle.
-- **Low confidence.** Win probabilities on real matchups stay between 50% and 65%, so the model rarely separates teams clearly.
+- **Low confidence.** Win probabilities on real matchups stay between 50% and 70%, so the model rarely separates teams clearly.
 - **The edge over Elo is small.** Log loss improves by only 0.0069 (0.6757 vs 0.6826) and the model got two more matches right than the baseline (21 vs 19 of 32). With 32 matches the margin of error is about ±17 percentage points, so this is not evidence that the model beats Elo.
 
 ---
