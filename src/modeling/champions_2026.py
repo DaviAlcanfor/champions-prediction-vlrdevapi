@@ -95,7 +95,7 @@ def tune_and_train(features: pd.DataFrame) -> tuple[XGBClassifier, float]:
 
 
 def team_stats_at_start(player_df: pd.DataFrame, teams: list[str]) -> dict[str, dict]:
-    """Mean ACS/KAST/ADR of each team in the 60 days before Champions ({} if no data)."""
+    """Mean ACS/KAST/ADR of each team in the WINDOW_DAYS before Champions ({} if no data)."""
     start = pd.Timestamp(CHAMPIONS_2026_START)
 
     return {team: compute_team_stats(player_df, start, team) or {} for team in teams}
