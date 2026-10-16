@@ -17,6 +17,7 @@ from src.features.player_stats import build_player_features, compute_team_stats,
 from src.modeling.predict import train_final_model
 from src.modeling.train import FEATURE_COLS, elo_baseline_log_loss, fill_missing_stats
 from src.modeling.tuning import objective
+from src.processing.placements import placements_before
 from src.processing.player_stats_2026 import load_player_stats_2026
 
 STAT_NAMES = ["acs", "kast", "adr"]
@@ -38,12 +39,12 @@ def _load_training_matches(pre_champions: pd.DataFrame) -> pd.DataFrame:
     return matches.sort_values("date", kind="stable").reset_index(drop=True)
 
 
-def _initial_elo_without_champions() -> dict[str, float]:
-    """Initial Elo from vlr placements, minus Champions 2026 (would leak the result)."""
+def _initial_elo(matches: pd.DataFrame) -> dict[str, float]:
+    """Initial Elo from placements before the first training match (no leakage)."""
     placements = pd.read_parquet(os.path.join(PROCESSED_PATH, "placements.parquet"))
-    placements = placements[placements["event_name"] != CHAMPIONS_2026_EVENT]
+    first_year = matches["date"].min().year
 
-    return calculate_initial_elo(placements)
+    return calculate_initial_elo(placements_before(placements, first_year))
 
 
 def _final_elo(elo_df: pd.DataFrame) -> dict[str, float]:
@@ -68,7 +69,7 @@ def build_training_data(pre_champions: pd.DataFrame) -> tuple[pd.DataFrame, dict
     """
     matches = _load_training_matches(pre_champions)
 
-    elo_df = calculate_dynamic_elo(matches, _initial_elo_without_champions())
+    elo_df = calculate_dynamic_elo(matches, _initial_elo(matches))
 
     event_end_dates = pre_champions.groupby("event")["date"].max()
     player_df = pd.concat(

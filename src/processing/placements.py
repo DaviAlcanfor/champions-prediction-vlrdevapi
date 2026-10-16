@@ -102,6 +102,14 @@ def process_placements(raw: dict) -> pd.DataFrame:
     return df
 
 
+def placements_before(placements_df: pd.DataFrame, year: int) -> pd.DataFrame:
+    """
+    Keeps only placements from before `year`.
+    Initial Elo must not know results of the season it is used to predict.
+    """
+    return placements_df[placements_df["year"] < year]
+
+
 if __name__ == "__main__":
     from src.ingestion.vlr_api import fetch_team_placements
 

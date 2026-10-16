@@ -1,7 +1,7 @@
 import pandas as pd
 from src.config.constants import STAGE_K, EVENT_WEIGHTS
 from src.config.enums import EventType
-from src.processing.placements import classify_event
+from src.processing.placements import classify_event, placements_before
 
 BASE_ELO = 0
 ELO_SCALE = 100
@@ -121,7 +121,8 @@ if __name__ == "__main__":
     matches_df = pd.read_parquet("data/processed/matches.parquet")
     placements_df = pd.read_parquet("data/processed/placements.parquet")
 
-    initial_elo = calculate_initial_elo(placements_df)
+    first_year = matches_df["date"].min().year
+    initial_elo = calculate_initial_elo(placements_before(placements_df, first_year))
     df_elo = calculate_dynamic_elo(matches_df, initial_elo)
 
     print(df_elo.shape)
