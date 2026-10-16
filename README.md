@@ -280,7 +280,6 @@ Download `kaggle.json` from [kaggle.com/settings](https://www.kaggle.com/setting
 
 **5. Run the pipeline**
 ```bash
-mkdir data\features models   # not created by the pipeline yet
 python main.py
 ```
 

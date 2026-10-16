@@ -9,6 +9,7 @@ from src.config.constants import (
     CHAMPIONS_2026_EVENT,
     CHAMPIONS_2026_START,
     PROCESSED_PATH,
+    RANDOM_SEED,
     TUNING_TRIALS,
 )
 from src.features.builder import build_match_features
@@ -86,7 +87,10 @@ def tune_and_train(features: pd.DataFrame) -> tuple[XGBClassifier, float]:
     """Optuna walk-forward tuning, then trains on all data. Returns (model, best log_loss)."""
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
+    )
     study.optimize(lambda trial: objective(trial, features), n_trials=TUNING_TRIALS)
 
     model = train_final_model(features, dict(study.best_params))

@@ -18,6 +18,10 @@ CHAMPIONS_2025_PATH = os.path.join(VCT_2025_PATH, "Valorant Champions 2025_csvs"
 
 # Folder paths
 PROCESSED_PATH = os.path.join("data", "processed")
+FEATURES_PATH = os.path.join("data", "features")
+MODELS_PATH = "models"
+
+RANDOM_SEED = 42
 RELEVANT_COLUMNS = ["date", "match_id", "team1", "score1", "team2", "score2", "winner", "stage"]
 
 # Showmatch teams

@@ -5,6 +5,7 @@ import numpy as np
 from xgboost import XGBClassifier
 from sklearn.metrics import log_loss
 
+from src.config.constants import RANDOM_SEED
 from src.modeling.train import (
     walk_forward_folds,
     elo_baseline_log_loss,
@@ -60,7 +61,10 @@ if __name__ == "__main__":
     df = pd.read_parquet("data/features/match_features.parquet")
     df = fill_missing_stats(df)
 
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
+    )
     study.optimize(lambda trial: objective(trial, df), n_trials=50, show_progress_bar=True)
 
     print("\nBest params:")
