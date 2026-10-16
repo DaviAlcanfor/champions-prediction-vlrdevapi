@@ -114,6 +114,9 @@ STAGE_K = {
     "Playoffs": 32,
 }
 
+# Share of the distance to the mean Elo every team loses when a new season starts
+SEASON_REGRESSION = 0.25
+
 
 # Champions 2026 validation
 KAGGLE_2026_PLAYER_STATS_PATH = os.path.join(VCT_HISTORIC_PATH, "vct_2026", "players_stats", "players_stats.csv")
