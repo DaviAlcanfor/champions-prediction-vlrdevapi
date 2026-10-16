@@ -67,7 +67,7 @@ Where `result = 1` if the team won, `0` if they lost. The further apart the Elo 
 
 ### Initial Elo
 
-Each team's starting Elo is calculated from their historical placements across all VCT events, weighted by two factors:
+Each team's starting Elo is calculated from their historical placements across VCT events, using only placements from years before the training period (so no result from the period being predicted leaks in), weighted by two factors:
 
 | Factor | Logic |
 |---|---|
@@ -79,13 +79,15 @@ weighted_score = event_weight × decay / place
 initial_elo   = sum(weighted_scores) × 100
 ```
 
+**Season regression:** at the start of each new season, every rating is pulled 25% of the way back toward the mean (`SEASON_REGRESSION` in `constants.py`), so last season's dominance doesn't carry over in full.
+
 ---
 
 ### Player Stats
 
 | Feature | Description |
 |---|---|
-| ACS / KAST / ADR | Aggregated per team over a 60-day window before each match |
+| ACS / KAST / ADR | Aggregated per team over a 150-day window before each match |
 | Roster stability | Days with stable roster, new players in last 30 days *(in progress)* |
 | Playstyle | Aggressiveness, carry dependency, attack preference *(in progress)* |
 
@@ -165,7 +167,7 @@ The model is retrained with **only data from before Champions** (cutoff `2026-09
 | 2025 matches | Kaggle (piyush86kumar) | Kickoff → Champions 2025 |
 | 2026 matches | vlr.gg via vlrdevapi | Kickoff → Stage 2 2026 (588 matches) |
 | 2026 player stats | Kaggle (ryanluong1) | Kickoff → Masters London 2026 |
-| Initial Elo | vlr.gg placements | All events, **minus Champions 2026** |
+| Initial Elo | vlr.gg placements | Only events before 2025 (before the training period) |
 
 Every feature (Elo, player stats) is frozen at the start of Champions. The model never sees any Champions result.
 
@@ -178,19 +180,24 @@ Every feature (Elo, player stats) is frozen at the start of Champions. The model
 
 ### Results (as of 2026-10-16, before the Lower Final)
 
-| Metric | Result |
-|---|---|
-| Accuracy on real matchups | 17/32 (53%) |
-| Group stage accuracy | 14/20 |
-| Playoffs accuracy | 3/12 |
-| Playoff teams predicted correctly | 7/8 (missed Vitality, predicted EDG) |
-| Predicted champion | Paper Rex (eliminated in Lower Round 1) |
+| Metric | Model | Elo baseline | Before these changes (model) |
+|---|---|---|---|
+| Walk-forward log loss (lower is better) | 0.6757 | 0.6826 | 0.6667 (optimistic, leaked placements) |
+| Accuracy on real matchups | 21/32 (65.6%) | 19/32 (59.4%) | 17/32 (53%) |
+| Group stage accuracy | 16/20 | 15/20 | 14/20 |
+| Playoffs accuracy | 5/12 | 4/12 | 3/12 |
+| Playoff teams predicted correctly | 7/8 (missed LOUD; predicted EDG) | - | 7/8 |
+| Predicted champion | Paper Rex (eliminated in Lower Round 1) | - | Paper Rex |
+
+The old Elo baseline (0.8035 log loss) was not comparable: it used leaky initial Elo and no season regression. All 16 teams now have player stats at Champions.
+
+The model's walk-forward log loss is the best of 50 Optuna trials selected on the same folds, so it is optimistic relative to the untuned Elo baseline.
 
 ### Known limitations
 
-- **Player stats don't reach Champions.** The 60-day window before Champions only covers Stage 2, which has no player stats on Kaggle. Every team falls back to the median, so the model ends up relying only on Elo.
-- **Elo carries too much of 2025.** Paper Rex starts Champions with the highest Elo by far, while teams in form in 2026 (LOUD, Vitality) sit in the middle.
-- **Low confidence.** Win probabilities stay between 50% and 62%, so the model rarely separates teams clearly.
+- **Elo still favors Paper Rex heavily.** Paper Rex starts Champions at 295 Elo, 65 points above the next team, while teams in form in 2026 (LOUD 8th, Vitality 10th) sit in the middle.
+- **Low confidence.** Win probabilities on real matchups stay between 50% and 70%, so the model rarely separates teams clearly.
+- **The edge over Elo is small.** Log loss improves by only 0.0069 (0.6757 vs 0.6826) and the model got two more matches right than the baseline (21 vs 19 of 32). With 32 matches the margin of error is about ±17 percentage points, so this is not evidence that the model beats Elo.
 
 ---
 
@@ -213,7 +220,7 @@ champions-prediction-vlrdevapi/
 │   │   └── player_stats_2026.py  # 2026 player stats from Kaggle
 │   ├── features/
 │   │   ├── elo.py                # initial and dynamic Elo calculation
-│   │   ├── player_stats.py       # player stats aggregation (60-day window)
+│   │   ├── player_stats.py       # player stats aggregation (150-day window)
 │   │   └── builder.py            # merges all features into final table
 │   └── modeling/
 │       ├── train.py              # walk-forward validation
@@ -280,7 +287,6 @@ Download `kaggle.json` from [kaggle.com/settings](https://www.kaggle.com/setting
 
 **5. Run the pipeline**
 ```bash
-mkdir data\features models   # not created by the pipeline yet
 python main.py
 ```
 

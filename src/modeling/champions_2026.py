@@ -9,14 +9,16 @@ from src.config.constants import (
     CHAMPIONS_2026_EVENT,
     CHAMPIONS_2026_START,
     PROCESSED_PATH,
+    RANDOM_SEED,
     TUNING_TRIALS,
 )
 from src.features.builder import build_match_features
-from src.features.elo import BASE_ELO, calculate_dynamic_elo, calculate_initial_elo, expected_score
+from src.features.elo import BASE_ELO, calculate_dynamic_elo, calculate_initial_elo
 from src.features.player_stats import build_player_features, compute_team_stats, load_player_stats
 from src.modeling.predict import train_final_model
-from src.modeling.train import FEATURE_COLS, fill_missing_stats
+from src.modeling.train import FEATURE_COLS, elo_baseline_log_loss, fill_missing_stats
 from src.modeling.tuning import objective
+from src.processing.placements import placements_before
 from src.processing.player_stats_2026 import load_player_stats_2026
 
 STAT_NAMES = ["acs", "kast", "adr"]
@@ -38,12 +40,12 @@ def _load_training_matches(pre_champions: pd.DataFrame) -> pd.DataFrame:
     return matches.sort_values("date", kind="stable").reset_index(drop=True)
 
 
-def _initial_elo_without_champions() -> dict[str, float]:
-    """Initial Elo from vlr placements, minus Champions 2026 (would leak the result)."""
+def _initial_elo(matches: pd.DataFrame) -> dict[str, float]:
+    """Initial Elo from placements before the first training match (no leakage)."""
     placements = pd.read_parquet(os.path.join(PROCESSED_PATH, "placements.parquet"))
-    placements = placements[placements["event_name"] != CHAMPIONS_2026_EVENT]
+    first_year = matches["date"].min().year
 
-    return calculate_initial_elo(placements)
+    return calculate_initial_elo(placements_before(placements, first_year))
 
 
 def _final_elo(elo_df: pd.DataFrame) -> dict[str, float]:
@@ -68,7 +70,7 @@ def build_training_data(pre_champions: pd.DataFrame) -> tuple[pd.DataFrame, dict
     """
     matches = _load_training_matches(pre_champions)
 
-    elo_df = calculate_dynamic_elo(matches, _initial_elo_without_champions())
+    elo_df = calculate_dynamic_elo(matches, _initial_elo(matches))
 
     event_end_dates = pre_champions.groupby("event")["date"].max()
     player_df = pd.concat(
@@ -85,7 +87,10 @@ def tune_and_train(features: pd.DataFrame) -> tuple[XGBClassifier, float]:
     """Optuna walk-forward tuning, then trains on all data. Returns (model, best log_loss)."""
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
+    )
     study.optimize(lambda trial: objective(trial, features), n_trials=TUNING_TRIALS)
 
     model = train_final_model(features, dict(study.best_params))
@@ -94,7 +99,7 @@ def tune_and_train(features: pd.DataFrame) -> tuple[XGBClassifier, float]:
 
 
 def team_stats_at_start(player_df: pd.DataFrame, teams: list[str]) -> dict[str, dict]:
-    """Mean ACS/KAST/ADR of each team in the 60 days before Champions ({} if no data)."""
+    """Mean ACS/KAST/ADR of each team in the WINDOW_DAYS before Champions ({} if no data)."""
     start = pd.Timestamp(CHAMPIONS_2026_START)
 
     return {team: compute_team_stats(player_df, start, team) or {} for team in teams}
@@ -105,10 +110,7 @@ def _matchup_features(team_a: str, team_b: str, elo: dict, team_stats: dict, med
     elo_a = elo.get(team_a, BASE_ELO)
     elo_b = elo.get(team_b, BASE_ELO)
 
-    row = {
-        "elo_diff": elo_a - elo_b,
-        "win_prob_team1": expected_score(elo_a, elo_b),
-    }
+    row = {"elo_diff": elo_a - elo_b}
 
     for stat in STAT_NAMES:
         row[f"{stat}_team1"] = team_stats[team_a].get(stat, medians[f"{stat}_team1"])
@@ -165,4 +167,5 @@ def train_champions_model(pre_champions: pd.DataFrame, teams: list[str]) -> dict
         "team_stats": team_stats,
         "win_prob": win_prob,
         "best_log_loss": best_log_loss,
+        "elo_log_loss": elo_baseline_log_loss(features),
     }

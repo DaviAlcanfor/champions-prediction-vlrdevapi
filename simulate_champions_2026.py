@@ -39,6 +39,7 @@ if __name__ == "__main__":
     win_prob = trained["win_prob"]
 
     print(f"Best walk-forward log_loss: {trained['best_log_loss']:.4f}")
+    print(f"Elo baseline log_loss:     {trained['elo_log_loss']:.4f}")
 
     # team ratings
     ratings = team_ratings(TEAMS, trained["elo"], trained["team_stats"])
@@ -59,9 +60,10 @@ if __name__ == "__main__":
     print_accuracy("Right winner per slot", bracket["hit"])
 
     # model pick on the real matchups
-    predictions = match_predictions(champions, win_prob)
+    predictions = match_predictions(champions, win_prob, trained["elo"])
     print_section("Model pick on real matchups", predictions)
-    print_accuracy("Accuracy", predictions["hit"])
+    print_accuracy("Model accuracy", predictions["hit"])
+    print_accuracy("Elo baseline accuracy", predictions["elo_hit"])
 
     # monte carlo
     titles, playoffs = monte_carlo(win_prob, CHAMPIONS_2026_GROUPS, MONTE_CARLO_SIMULATIONS)

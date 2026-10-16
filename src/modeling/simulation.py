@@ -2,6 +2,7 @@ import random
 from collections import Counter
 from typing import Callable
 
+from src.config.constants import RANDOM_SEED
 from src.config.enums import BracketSlot
 
 TBD = "TBD"
@@ -80,7 +81,7 @@ def monte_carlo(
     win_prob: WinProbTable,
     groups: dict[str, tuple],
     n_simulations: int,
-    seed: int = 42,
+    seed: int = RANDOM_SEED,
 ) -> tuple[Counter, Counter]:
     """Runs the tournament n times, drawing each match. Returns (title counts, playoff counts)."""
     random.seed(seed)

@@ -1,7 +1,7 @@
 import pandas as pd
-from src.config.constants import STAGE_K, EVENT_WEIGHTS
+from src.config.constants import STAGE_K, EVENT_WEIGHTS, SEASON_REGRESSION
 from src.config.enums import EventType
-from src.processing.placements import classify_event
+from src.processing.placements import classify_event, placements_before
 
 BASE_ELO = 0
 ELO_SCALE = 100
@@ -60,6 +60,16 @@ def update_elo(
     return new_elo
 
 
+def regress_to_mean(elo: dict[str, float], factor: float) -> dict[str, float]:
+    """
+    Pulls every team's Elo toward the mean by `factor` (0 = unchanged, 1 = everyone equal).
+    Applied between seasons: rosters change, so last season's rating is only partly valid.
+    """
+    mean = sum(elo.values()) / len(elo)
+
+    return {team: mean + (rating - mean) * (1 - factor) for team, rating in elo.items()}
+
+
 def calculate_dynamic_elo(
     matches_df: pd.DataFrame,
     initial_elo: dict[str, float],
@@ -69,9 +79,15 @@ def calculate_dynamic_elo(
     Returns a DataFrame with elo_before and elo_after for each match.
     """
     elo = dict(initial_elo)
+    season = None
     rows = []
 
     for _, match in matches_df.iterrows():
+        # new season: ratings partly reset toward the mean
+        if season is not None and match["date"].year != season:
+            elo = regress_to_mean(elo, SEASON_REGRESSION)
+        season = match["date"].year
+
         team1 = match["team1"]
         team2 = match["team2"]
         winner = match["winner"]
@@ -121,7 +137,8 @@ if __name__ == "__main__":
     matches_df = pd.read_parquet("data/processed/matches.parquet")
     placements_df = pd.read_parquet("data/processed/placements.parquet")
 
-    initial_elo = calculate_initial_elo(placements_df)
+    first_year = matches_df["date"].min().year
+    initial_elo = calculate_initial_elo(placements_before(placements_df, first_year))
     df_elo = calculate_dynamic_elo(matches_df, initial_elo)
 
     print(df_elo.shape)

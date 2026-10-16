@@ -5,8 +5,10 @@ import numpy as np
 from xgboost import XGBClassifier
 from sklearn.metrics import log_loss
 
+from src.config.constants import RANDOM_SEED
 from src.modeling.train import (
-    get_tournament_order,
+    walk_forward_folds,
+    elo_baseline_log_loss,
     fill_missing_stats,
     compute_sample_weights,
     FEATURE_COLS,
@@ -28,19 +30,9 @@ def objective(trial: optuna.Trial, df: pd.DataFrame) -> float:
     subsample = trial.suggest_float("subsample", 0.5, 1.0)
     colsample_bytree = trial.suggest_float("colsample_bytree", 0.5, 1.0)
 
-    events = get_tournament_order(df)
     fold_losses = []
 
-    for i in range(1, len(events)):
-        train_events = events[:i]
-        test_event = events[i]
-
-        train = df[df["event"].isin(train_events)]
-        test = df[df["event"] == test_event]
-
-        if len(train) < 10 or len(test) < 3:
-            continue
-
+    for _, train, test in walk_forward_folds(df):
         X_train = train[FEATURE_COLS]
         y_train = train[TARGET_COL]
         X_test = test[FEATURE_COLS]
@@ -69,13 +61,17 @@ if __name__ == "__main__":
     df = pd.read_parquet("data/features/match_features.parquet")
     df = fill_missing_stats(df)
 
-    study = optuna.create_study(direction="minimize")
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(seed=RANDOM_SEED),
+    )
     study.optimize(lambda trial: objective(trial, df), n_trials=50, show_progress_bar=True)
 
     print("\nBest params:")
     for k, v in study.best_params.items():
         print(f"  {k}: {v}")
     print(f"Best log_loss: {study.best_value:.4f}")
+    print(f"Elo baseline log_loss: {elo_baseline_log_loss(df):.4f}")
 
     # saving the params
     best_params = study.best_params

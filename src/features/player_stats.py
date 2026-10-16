@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from src.config.constants import VCT_2025_PATH, TEAM_NAME_ALIASES, INVALID_TEAMS
 
-WINDOW_DAYS = 60
+WINDOW_DAYS = 150
 STAT_COLUMNS = ["match_date", "player_team", "acs", "kast", "adr"]
 
 
@@ -43,7 +43,7 @@ def load_player_stats() -> pd.DataFrame:
 
 def compute_team_stats(player_df: pd.DataFrame, match_date: pd.Timestamp, team: str) -> dict | None:
     """
-    Computes mean ACS, KAST, ADR for a team in the 60 days before a given match date.
+    Computes mean ACS, KAST, ADR for a team in the WINDOW_DAYS before a given match date.
     Returns None if no data is available in the window.
     """
     window_start = match_date - pd.Timedelta(days=WINDOW_DAYS)
@@ -71,7 +71,7 @@ def compute_team_stats(player_df: pd.DataFrame, match_date: pd.Timestamp, team: 
 def build_player_features(elo_df: pd.DataFrame, player_df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds team player stats features to each match in elo_df.
-    Uses only data from the 60 days before each match to avoid leakage.
+    Uses only data from the WINDOW_DAYS before each match to avoid leakage.
     """
     rows = []
 

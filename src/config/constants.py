@@ -18,6 +18,9 @@ CHAMPIONS_2025_PATH = os.path.join(VCT_2025_PATH, "Valorant Champions 2025_csvs"
 
 # Folder paths
 PROCESSED_PATH = os.path.join("data", "processed")
+FEATURES_PATH = os.path.join("data", "features")
+MODELS_PATH = "models"
+
 RELEVANT_COLUMNS = ["date", "match_id", "team1", "score1", "team2", "score2", "winner", "stage"]
 
 # Showmatch teams
@@ -114,6 +117,9 @@ STAGE_K = {
     "Playoffs": 32,
 }
 
+# Share of the distance to the mean Elo every team loses when a new season starts
+SEASON_REGRESSION = 0.25
+
 
 # Champions 2026 validation
 KAGGLE_2026_PLAYER_STATS_PATH = os.path.join(VCT_HISTORIC_PATH, "vct_2026", "players_stats", "players_stats.csv")
@@ -131,3 +137,4 @@ CHAMPIONS_2026_GROUPS = {
 
 TUNING_TRIALS = 50
 MONTE_CARLO_SIMULATIONS = 10_000
+RANDOM_SEED = 42
