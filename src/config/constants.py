@@ -84,6 +84,14 @@ TEAM_NAME_ALIASES = {
     "VISA KRÜ(KRÜ Esports)": "KRÜ Esports",
     "JD Mall JDG Esports(JDG Esports)": "JDG Esports",
     "Movistar KOI(KOI)": "KOI",
+    "JD Gaming": "JDG Esports",
+    "KIWOOM DRX": "DRX",
+    "Mega Minors": "NRG",  # Kaggle 2026 mislabels NRG
+}
+
+# Stages missing from STAGE_K would be skipped by the Elo calculation
+STAGE_ALIASES = {
+    "Play-Ins": "Group Stage",
 }
 
 
@@ -105,3 +113,21 @@ STAGE_K = {
     "Main Event": 24,
     "Playoffs": 32,
 }
+
+
+# Champions 2026 validation
+KAGGLE_2026_PLAYER_STATS_PATH = os.path.join(VCT_HISTORIC_PATH, "vct_2026", "players_stats", "players_stats.csv")
+
+CHAMPIONS_2026_EVENT = "Valorant Champions 2026"
+CHAMPIONS_2026_START = "2026-09-24"
+
+# GSL groups, in opening match order: (0 x 1), (2 x 3)
+CHAMPIONS_2026_GROUPS = {
+    "A": ("Team Liquid", "Paper Rex", "TYLOO", "G2 Esports"),
+    "B": ("Nongshim RedForce", "NRG", "Karmine Corp", "Xi Lai Gaming"),
+    "C": ("Global Esports", "Team Vitality", "LOUD", "EDward Gaming"),
+    "D": ("100 Thieves", "T1", "JDG Esports", "FUT Esports"),
+}
+
+TUNING_TRIALS = 50
+MONTE_CARLO_SIMULATIONS = 10_000

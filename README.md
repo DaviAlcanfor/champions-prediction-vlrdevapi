@@ -124,9 +124,12 @@ A match from 2 years ago at a regional event contributes much less to training t
 
 ## Monte Carlo Simulation
 
-*(Waiting for Valorant Champions 2026 participant list)*
+The simulation follows the Champions 2026 format:
 
-Once the bracket is confirmed, the simulation works as follows:
+- **Group stage:** 4 GSL groups of 4 teams (double elimination). Top 2 of each group advance.
+- **Playoffs:** 8-team double elimination bracket, from Upper Round 1 to the Grand Final.
+
+It works as follows:
 
 1. For each of 10,000 iterations, simulate the full tournament bracket from start to finish
 2. Each matchup is decided probabilistically — the model outputs a win probability, and a random draw determines the winner
@@ -139,6 +142,56 @@ P(team wins Champions) = wins across 10,000 simulations / 10,000
 
 This captures uncertainty across the full bracket — a team with 60% win probability in every match still loses sometimes, and those scenarios are all reflected in the final probabilities.
 
+The same bracket logic also runs in two deterministic modes:
+
+| Mode | How each match is decided | Used for |
+|---|---|---|
+| Monte Carlo | Random draw using the model probability | Title and playoff probability per team |
+| Predicted bracket | The favorite always wins | The single most likely bracket, groups → Grand Final |
+| Replay | Real result from vlr.gg | Rebuilding the real bracket to compare slot by slot |
+
+---
+
+## Champions 2026 Validation
+
+`simulate_champions_2026.py` checks whether the approach actually works on Valorant Champions 2026 (Shanghai).
+
+### How it avoids data leakage
+
+The model is retrained with **only data from before Champions** (cutoff `2026-09-24`):
+
+| Data | Source | Period |
+|---|---|---|
+| 2025 matches | Kaggle (piyush86kumar) | Kickoff → Champions 2025 |
+| 2026 matches | vlr.gg via vlrdevapi | Kickoff → Stage 2 2026 (588 matches) |
+| 2026 player stats | Kaggle (ryanluong1) | Kickoff → Masters London 2026 |
+| Initial Elo | vlr.gg placements | All events, **minus Champions 2026** |
+
+Every feature (Elo, player stats) is frozen at the start of Champions. The model never sees any Champions result.
+
+### What it outputs
+
+1. **Ratings** — Elo of each team at Champions start
+2. **Predicted bracket vs real** — the full bracket the model predicts (groups → Grand Final), next to the real one
+3. **Model pick on real matchups** — accuracy on every Champions match already played
+4. **Monte Carlo** — playoff and title probability per team
+
+### Results (as of 2026-10-16, before the Lower Final)
+
+| Metric | Result |
+|---|---|
+| Accuracy on real matchups | 17/32 (53%) |
+| Group stage accuracy | 14/20 |
+| Playoffs accuracy | 3/12 |
+| Playoff teams predicted correctly | 7/8 (missed Vitality, predicted EDG) |
+| Predicted champion | Paper Rex (eliminated in Lower Round 1) |
+
+### Known limitations
+
+- **Player stats don't reach Champions.** The 60-day window before Champions only covers Stage 2, which has no player stats on Kaggle. Every team falls back to the median, so the model ends up relying only on Elo.
+- **Elo carries too much of 2025.** Paper Rex starts Champions with the highest Elo by far, while teams in form in 2026 (LOUD, Vitality) sit in the middle.
+- **Low confidence.** Win probabilities stay between 50% and 62%, so the model rarely separates teams clearly.
+
 ---
 
 ## Project Structure
@@ -149,13 +202,15 @@ champions-prediction-vlrdevapi/
 ├── src/
 │   ├── config/
 │   │   ├── constants.py          # paths, team IDs, weights, keywords
-│   │   └── enums.py              # EventType, EventKeyword
+│   │   └── enums.py              # EventType, EventKeyword, BracketSlot
 │   ├── ingestion/
 │   │   ├── kaggle_loader.py      # downloads and organizes Kaggle datasets
-│   │   └── vlr_api.py            # fetches team placements via vlrdevapi
+│   │   ├── vlr_api.py            # fetches team placements via vlrdevapi
+│   │   └── vlr_2026.py           # fetches 2026 VCT matches via vlrdevapi
 │   ├── processing/
 │   │   ├── normalizer.py         # normalizes matches into unified schema
-│   │   └── placements.py         # processes placements with time decay
+│   │   ├── placements.py         # processes placements with time decay
+│   │   └── player_stats_2026.py  # 2026 player stats from Kaggle
 │   ├── features/
 │   │   ├── elo.py                # initial and dynamic Elo calculation
 │   │   ├── player_stats.py       # player stats aggregation (60-day window)
@@ -163,13 +218,17 @@ champions-prediction-vlrdevapi/
 │   └── modeling/
 │       ├── train.py              # walk-forward validation
 │       ├── tuning.py             # Optuna hyperparameter optimization
-│       └── predict.py            # final model training and inference
+│       ├── predict.py            # final model training and inference
+│       ├── simulation.py         # bracket simulation: Monte Carlo, predicted, replay
+│       ├── champions_2026.py     # retrains with pre-Champions data, win probability table
+│       └── evaluation.py         # report tables (bracket comparison, accuracy, odds)
 │
 ├── notebooks/
 │   ├── EDA.ipynb                 # data exploration
-│   ├── api_exploration.ipynb     # vlrdevapi exploration and team ID mapping
-│   └── simulation.ipynb          # Monte Carlo simulation and results *(coming soon)*
+│   └── api_exploration.ipynb     # vlrdevapi exploration and team ID mapping
 │
+├── main.py                       # runs the full pipeline
+├── simulate_champions_2026.py    # Champions 2026 validation
 ├── data/                         # not tracked by git
 │   ├── raw/
 │   ├── processed/
@@ -186,7 +245,8 @@ champions-prediction-vlrdevapi/
 | Dataset | Author | Contents |
 |---|---|---|
 | [VCT 2025 - All Events](https://www.kaggle.com/datasets/piyush86kumar/valorant-vct-2025-all-events) | piyush86kumar | All 2025 events — Kickoff, Stage 1, Stage 2, Masters, Champions |
-| [VCT 2021-2025](https://www.kaggle.com/datasets/ryanluong1/valorant-champion-tour-2021-2023-data) | ryanluong1 | Historical match and player data 2021–2025 |
+| [VCT 2021-2025](https://www.kaggle.com/datasets/ryanluong1/valorant-champion-tour-2021-2023-data) | ryanluong1 | Historical match and player data 2021–2026 (2026 up to Masters London) |
+| [vlr.gg](https://www.vlr.gg) via [vlrdevapi](https://pypi.org/project/vlrdevapi/) | — | Team placements and 2026 matches with dates |
 
 > Data is not included in this repository. See **How to Run** below.
 
@@ -220,5 +280,12 @@ Download `kaggle.json` from [kaggle.com/settings](https://www.kaggle.com/setting
 
 **5. Run the pipeline**
 ```bash
+mkdir data\features models   # not created by the pipeline yet
 python main.py
 ```
+
+**6. Run the Champions 2026 validation**
+```bash
+python simulate_champions_2026.py
+```
+Fetches the latest results from vlr.gg on every run, so it can be re-run as Champions goes on.
